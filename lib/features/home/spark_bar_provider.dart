@@ -1,6 +1,10 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../services/cloud_function_service.dart';
+// The key now lives server-side on Cloudflare Workers (free tier, no card
+// required) instead of inside the app — see cloudflare_worker_service.dart.
+// The earlier temporary direct-in-app approach (openrouter_service.dart)
+// is no longer used but kept in the project for reference.
+import '../../services/cloudflare_worker_service.dart';
 import '../../services/local_reminder_service.dart';
 import 'confirmation_card_models.dart';
 
@@ -41,7 +45,7 @@ class SparkBarState {
 }
 
 class SparkBarNotifier extends StateNotifier<SparkBarState> {
-  final CloudFunctionService _cloudFn;
+  final CloudflareWorkerService _cloudFn;
   final LocalReminderService _localService;
 
   SparkBarNotifier(this._cloudFn, this._localService) : super(const SparkBarState());
@@ -126,7 +130,7 @@ class SparkBarNotifier extends StateNotifier<SparkBarState> {
 final sparkBarStateProvider =
     StateNotifierProvider<SparkBarNotifier, SparkBarState>((ref) {
   return SparkBarNotifier(
-    ref.watch(cloudFunctionServiceProvider),
+    ref.watch(cloudflareWorkerServiceProvider),
     ref.watch(localReminderServiceProvider),
   );
 });

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/theme.dart';
@@ -11,7 +10,6 @@ import 'models/trigger_model.dart';
 import 'models/recurrence_model.dart';
 import 'models/pending_clarification.dart';
 import 'models/settings.dart';
-import 'firebase_options.dart';
 
 const String remindersBoxName = 'reminders';
 const String pendingClarificationsBoxName = 'pendingClarifications';
@@ -37,9 +35,12 @@ Future<void> main() async {
     await settingsBox.add(Settings());
   }
 
-  // Firebase init — needed only to call the single callAI Cloud Function
-  // (Session 2). No Auth, no Firestore, no Messaging.
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // No Firebase init needed — the AI proxy now runs on Cloudflare Workers
+  // (cloudflare_worker_service.dart), not Firebase Cloud Functions, and
+  // this app has no Auth/Firestore/Messaging usage at all (Section 4 of
+  // the implementation plan). firebase_options.dart and the functions/
+  // folder are left in the project only as reference/fallback in case you
+  // ever want to switch hosting again — neither is required to run.
 
   runApp(const ProviderScope(child: WhisprApp()));
 }
