@@ -1,0 +1,47 @@
+name: whispr
+description: "Just say it. We'll handle the rest."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.5.1
+
+  # Local storage (Session 1)
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  path_provider: ^2.1.3
+
+  # Navigation
+  go_router: ^14.2.0
+
+  # Cloud Function call (Session 2)
+  cloud_functions: ^5.1.3
+  firebase_core: ^3.3.0
+
+  # Voice input (Session 3)
+  record: ^5.1.2
+  permission_handler: ^11.3.1
+
+  # Fonts (Session 1 - design system)
+  google_fonts: ^6.2.1
+
+  # Utilities
+  uuid: ^4.4.0
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.11
+
+flutter:
+  uses-material-design: true
