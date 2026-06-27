@@ -1,0 +1,17 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+*.g.dart
+
+# IDE
+.idea/
+*.iml
+
+# Firebase
+functions/node_modules/
+functions/lib/
+functions/.env
+firebase-debug.log

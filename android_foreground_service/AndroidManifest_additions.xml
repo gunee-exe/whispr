@@ -1,0 +1,64 @@
+<!--
+  android/app/src/main/AndroidManifest.xml — ADDITIONS ONLY
+  
+  Merge these snippets into your existing AndroidManifest.xml.
+  The full file already exists in your project from Flutter's scaffold;
+  only the new/changed elements are shown here.
+-->
+
+<!--
+  ============================================================
+  1. PERMISSIONS — add inside <manifest>, before <application>
+  ============================================================
+-->
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+<!-- Required for flutter_local_notifications exact alarms on Android 12+. -->
+<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+<uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+<!-- Microphone for voice recording. -->
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+<!--
+  ============================================================
+  2. SERVICE DECLARATION — add inside <application>
+  ============================================================
+-->
+<service
+    android:name=".CountdownForegroundService"
+    android:enabled="true"
+    android:exported="false"
+    android:foregroundServiceType="mediaPlayback" />
+
+<!--
+  ============================================================
+  3. NOTIFICATION SOUND — raw resource
+  ============================================================
+  Place your sound file at:
+    android/app/src/main/res/raw/whispr_chime.ogg
+  (or .mp3 — under 5 seconds, short chime)
+  
+  The NotificationService.dart creates the channel with:
+    sound: RawResourceAndroidNotificationSound('whispr_chime')
+  which references this file by name (no extension).
+-->
+
+<!--
+  ============================================================
+  4. FLUTTER LOCAL NOTIFICATIONS RECEIVER (if not already present)
+  ============================================================
+-->
+<receiver
+    android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
+    android:exported="false" />
+<receiver
+    android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+        <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+        <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+    </intent-filter>
+</receiver>
