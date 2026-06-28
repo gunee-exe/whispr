@@ -117,8 +117,25 @@ class SparkBarNotifier extends StateNotifier<SparkBarState> {
   }
 
   /// Called when the user confirms the card as-is, or after editing it.
+  /// Saves AND collapses — correct for the single-task case, where exactly
+  /// one save happens per user action.
   Future<void> confirmCard(ConfirmationCardData finalData) async {
     await _localService.saveReminderFromCard(finalData);
+    collapse();
+  }
+
+  /// FIX: the "two tasks" multi-task flow used to call confirmCard() in a
+  /// loop — but confirmCard() calls collapse() after every single save,
+  /// which resets the whole SparkBarState (clearing cardData) immediately
+  /// after the FIRST task saved. The loop's second iteration then ran
+  /// against an already-collapsed/empty state, which is what produced the
+  /// blank/white-looking screen on the "two tasks" path. This method saves
+  /// every task first, with no state reset in between, then collapses
+  /// exactly once at the very end.
+  Future<void> confirmMultipleCards(List<ConfirmationCardData> allData) async {
+    for (final data in allData) {
+      await _localService.saveReminderFromCard(data);
+    }
     collapse();
   }
 

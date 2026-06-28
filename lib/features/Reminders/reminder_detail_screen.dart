@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../models/reminder.dart';
 
 import '../../core/theme.dart';
 import '../../services/local_reminder_service.dart';
@@ -34,19 +35,31 @@ class _ReminderDetailScreenState extends ConsumerState<ReminderDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final svc = ref.watch(localReminderServiceProvider);
-    final reminder = svc.getReminder(widget.reminderId);
+    final svc = ref.read(localReminderServiceProvider);
+    // Watches ONLY this reminder, not the whole list — fixes the white
+    // screen that occurred on save, caused by every other reminder's
+    // changes also forcing this screen to rebuild mid-edit.
+    final reminderAsync = ref.watch(reminderProvider(widget.reminderId));
 
-    // Live-reload on Hive box changes
-    ref.watch(remindersListProvider);
-
-    if (reminder == null) {
-      return Scaffold(
+    return reminderAsync.when(
+      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (e, _) => Scaffold(
         appBar: AppBar(),
-        body: const Center(child: Text('Reminder not found')),
-      );
-    }
+        body: Center(child: Text('Couldn\'t load this reminder: $e')),
+      ),
+      data: (reminder) {
+        if (reminder == null) {
+          return Scaffold(
+            appBar: AppBar(),
+            body: const Center(child: Text('Reminder not found')),
+          );
+        }
+        return _buildDetail(context, svc, reminder);
+      },
+    );
+  }
 
+  Widget _buildDetail(BuildContext context, LocalReminderService svc, Reminder reminder) {
     if (!_editing && _titleCtrl.text != reminder.taskTitle) {
       _titleCtrl.text = reminder.taskTitle;
     }
@@ -63,13 +76,21 @@ class _ReminderDetailScreenState extends ConsumerState<ReminderDetailScreen> {
             onPressed: () async {
               if (_editing) {
                 // Save
-                reminder.taskTitle = _titleCtrl.text.trim();
-                await svc.updateReminder(reminder);
-                setState(() => _editing = false);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(const SnackBar(content: Text('Saved')));
+                try {
+                  reminder.taskTitle = _titleCtrl.text.trim();
+                  await svc.updateReminder(reminder);
+                  if (mounted) setState(() => _editing = false);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(const SnackBar(content: Text('Saved')));
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Could not save: $e')),
+                    );
+                  }
                 }
               } else {
                 setState(() => _editing = true);

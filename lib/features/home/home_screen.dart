@@ -41,10 +41,18 @@ class HomeScreen extends ConsumerWidget {
               bottom: 90,
               child: ConfirmationCard(
                 data: state.cardData!,
-                onConfirm: (finalData) {
-                  return ref
-                      .read(sparkBarStateProvider.notifier)
-                      .confirmCard(finalData);
+                onConfirm: (finalData) async {
+                  try {
+                    await ref
+                        .read(sparkBarStateProvider.notifier)
+                        .confirmCard(finalData);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Could not save reminder: $e')),
+                      );
+                    }
+                  }
                 },
                 onDismiss: () {
                   ref.read(sparkBarStateProvider.notifier).dismissCard();

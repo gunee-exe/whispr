@@ -2,7 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/home/home_screen.dart';
 import '../features/settings/settings_screen.dart';
-import '../features/Reminders/remindert_list_screen.dart';
+import '../features/Reminders/reminder_list_screen.dart';
 import '../features/Reminders/reminder_detail_screen.dart';
 
 /// All routes for Whispr. No auth-gating — renders directly into HomeScreen.

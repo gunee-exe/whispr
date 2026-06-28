@@ -9,10 +9,9 @@ import 'package:http/http.dart' as http;
 /// the OpenRouter key server-side and forwards either typed text or a
 /// recorded audio clip; it does not save anything or know about reminders.
 ///
-/// Same public method names/signatures as the old CloudFunctionService
-/// (cloud_function_service.dart, kept in the project but currently
-/// unused) — so switching providers in spark_bar_provider.dart is the
-/// only change needed if you ever want to swap hosting again.
+/// Same public method names/signatures the old Firebase-based service had
+/// (now removed — this Cloudflare Worker version replaced it entirely,
+/// confirmed unused and deleted as of this fix pass).
 class CloudflareWorkerService {
   // Set this to your deployed Worker's URL after running `wrangler deploy`
   // — it'll print something like https://whispr-callai.YOUR-SUBDOMAIN.workers.dev
@@ -55,29 +54,6 @@ class CloudflareWorkerService {
     });
   }
 
-  /// Returns a numeric UTC offset like "+05:00" or "-04:30" — something the
-  /// AI can use mechanically with zero inference, unlike DateTime.timeZoneName
-  /// (which can return ambiguous OS-level abbreviations such as "PKT" or a
-  /// generic "GMT+5" depending on device/OS, and was the root cause of
-  /// reminders displaying in UTC instead of local time).
-  static String _utcOffsetString(DateTime localNow) {
-    final offset = localNow.timeZoneOffset;
-    final sign = offset.isNegative ? '-' : '+';
-    final abs = offset.abs();
-    final hours = abs.inHours.toString().padLeft(2, '0');
-    final minutes = (abs.inMinutes % 60).toString().padLeft(2, '0');
-    return '$sign$hours:$minutes';
-  }
-
-  /// DateTime.now().toIso8601String() omits the UTC offset entirely for
-  /// local DateTimes, leaving the anchor date/time itself ambiguous to the
-  /// model. This appends the real offset explicitly.
-  static String _isoWithOffset(DateTime localNow) {
-    final base = localNow.toIso8601String(); // e.g. "2026-06-26T21:18:00.123456"
-    final noMicros = base.split('.').first; // strip fractional seconds
-    return '$noMicros${_utcOffsetString(localNow)}';
-  }
-
   Future<Map<String, dynamic>> _post(Map<String, dynamic> body) async {
     if (_workerUrl == 'PASTE_YOUR_WORKER_URL_HERE') {
       throw StateError(
@@ -99,6 +75,36 @@ class CloudflareWorkerService {
     }
 
     return decoded;
+  }
+
+  /// Returns a numeric UTC offset like "+05:00" or "-04:30" — something the
+  /// AI can use mechanically with zero inference, unlike DateTime.timeZoneName
+  /// (which can return ambiguous OS-level abbreviations such as "PKT" or a
+  /// generic "GMT+5" depending on device/OS). Using timeZoneName was the
+  /// root cause of reminders displaying in UTC instead of local Pakistan time.
+  ///
+  /// ⚠️ THIS FIX HAS ALREADY BEEN SILENTLY REVERTED ONCE — an unrelated
+  /// bugfix pass regenerated this file from an older snapshot and dropped
+  /// it without realizing. If this file is ever regenerated wholesale
+  /// again (by a human or an AI assistant working from stale context),
+  /// re-apply this exact fix. Do not replace _utcOffsetString/_isoWithOffset
+  /// calls back with raw DateTime.now().timeZoneName / toIso8601String().
+  static String _utcOffsetString(DateTime localNow) {
+    final offset = localNow.timeZoneOffset;
+    final sign = offset.isNegative ? '-' : '+';
+    final abs = offset.abs();
+    final hours = abs.inHours.toString().padLeft(2, '0');
+    final minutes = (abs.inMinutes % 60).toString().padLeft(2, '0');
+    return '$sign$hours:$minutes';
+  }
+
+  /// DateTime.now().toIso8601String() omits the UTC offset entirely for
+  /// local DateTimes, leaving the AI's "current time" anchor ambiguous.
+  /// This appends the real offset explicitly so the anchor is unambiguous.
+  static String _isoWithOffset(DateTime localNow) {
+    final base = localNow.toIso8601String(); // e.g. "2026-06-26T21:18:00.123456"
+    final noMicros = base.split('.').first; // strip fractional seconds
+    return '$noMicros${_utcOffsetString(localNow)}';
   }
 }
 

@@ -130,6 +130,16 @@ class LocalReminderService {
 
   Reminder? getReminder(String id) => _remindersBox.get(id);
 
+  /// Watches ONE reminder by id, not the whole list — used by the Detail
+  /// screen so an edit to any OTHER reminder doesn't force this screen to
+  /// rebuild (which was racing with this screen's own setState() and
+  /// causing a white screen on save). Emits an initial value immediately,
+  /// same fix as watchAllActiveReminders.
+  Stream<Reminder?> watchReminder(String id) async* {
+    yield getReminder(id);
+    yield* _remindersBox.watch(key: id).map((_) => getReminder(id));
+  }
+
   List<Reminder> getAllActiveReminders() {
     return _remindersBox.values.where((r) => r.status == 'active').toList()
       ..sort(
@@ -139,8 +149,14 @@ class LocalReminderService {
       );
   }
 
-  Stream<List<Reminder>> watchAllActiveReminders() {
-    return _remindersBox.watch().map((_) => getAllActiveReminders());
+  /// Emits the current list immediately, THEN updates on every Hive box
+  /// change. Box.watch() alone only emits on writes — it never emits an
+  /// initial value — so a screen that opens cold with no write happening
+  /// in that session would sit in "loading" forever. This was the cause
+  /// of the reminders list intermittently hanging on open.
+  Stream<List<Reminder>> watchAllActiveReminders() async* {
+    yield getAllActiveReminders();
+    yield* _remindersBox.watch().map((_) => getAllActiveReminders());
   }
 
   /// Snooze a specific trigger.
@@ -197,4 +213,11 @@ final localReminderServiceProvider = Provider<LocalReminderService>((ref) {
 
 final remindersListProvider = StreamProvider<List<Reminder>>((ref) {
   return ref.watch(localReminderServiceProvider).watchAllActiveReminders();
+});
+
+/// Scoped to one reminder — use this in the Detail screen instead of
+/// remindersListProvider, so editing/saving doesn't trigger a rebuild
+/// race against every other reminder's changes too.
+final reminderProvider = StreamProvider.family<Reminder?, String>((ref, id) {
+  return ref.watch(localReminderServiceProvider).watchReminder(id);
 });

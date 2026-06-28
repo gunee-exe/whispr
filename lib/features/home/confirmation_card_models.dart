@@ -90,6 +90,9 @@ class ConfirmationCardData {
           inputMethod: inputMethod,
           originalInputText: originalInputText,
           taskTitle: json['taskTitle'] as String?,
+          // .toLocal() — fix from the timezone-fix session: the AI returns
+          // an offset-correct instant (e.g. +05:00), but Dart won't
+          // auto-display it as local time without this call.
           dueAt: json['dueAt'] != null
               ? DateTime.tryParse(json['dueAt'] as String)?.toLocal()
               : null,
@@ -103,25 +106,52 @@ class ConfirmationCardData {
     }
   }
 
+  /// Hardened against malformed AI responses (skip a bad trigger instead of
+  /// throwing — this was lost when a later patch reverted to the unguarded
+  /// version; restored here) AND timezone-correct (.toLocal() — from the
+  /// timezone-fix session). Both fixes are needed together.
   static List<TriggerModel>? _parseTriggers(List? raw) {
     if (raw == null) return null;
     int counter = 0;
-    return raw.map((t) {
-      final map = t as Map<String, dynamic>;
-      return TriggerModel(
-        triggerId: '${DateTime.now().microsecondsSinceEpoch}_${counter++}',
-        fireAt: DateTime.parse(map['fireAt'] as String).toLocal(),
-        label: map['label'] as String? ?? '',
-        kind: map['kind'] as String? ?? 'fixed_time',
-        localNotificationId: 0,
-      );
-    }).toList();
+    final result = <TriggerModel>[];
+    for (final t in raw) {
+      try {
+        final map = t as Map<String, dynamic>;
+        final fireAtRaw = map['fireAt'] as String?;
+        final fireAt = fireAtRaw != null
+            ? DateTime.tryParse(fireAtRaw)?.toLocal()
+            : null;
+        if (fireAt == null) {
+          // Malformed/missing fireAt from the AI — skip just this trigger
+          // rather than crashing the whole confirmation card.
+          continue;
+        }
+        result.add(TriggerModel(
+          triggerId: '${DateTime.now().microsecondsSinceEpoch}_${counter++}',
+          fireAt: fireAt,
+          label: map['label'] as String? ?? '',
+          kind: map['kind'] as String? ?? 'fixed_time',
+          localNotificationId: 0,
+        ));
+      } catch (_) {
+        continue;
+      }
+    }
+    return result;
   }
 
+  /// Same dual fix as above: null-safe on a malformed/missing `type`
+  /// field, and .toLocal() on endDate.
   static RecurrenceModel? _parseRecurrence(Map<String, dynamic>? raw) {
     if (raw == null) return null;
+    final type = raw['type'] as String?;
+    if (type == null) {
+      // A recurrence block with no type is malformed — treat as "no
+      // recurrence" rather than crashing on the required field.
+      return null;
+    }
     return RecurrenceModel(
-      type: raw['type'] as String,
+      type: type,
       daysOfWeek: (raw['daysOfWeek'] as List?)?.cast<int>(),
       timesOfDay: (raw['timesOfDay'] as List?)?.cast<String>() ?? const [],
       endDate: raw['endDate'] != null
